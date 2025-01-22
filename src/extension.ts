@@ -1,26 +1,75 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "promiserejectionfixer" is now active!');
+	// This command works by getting a list of locations of '.then' in the current doc, and then
+	// iterating through them and checking for rejection handling. If there is no rejection handling,
+	// the command will insert handling.
+	const disposable = vscode.commands.registerCommand('promiserejectionfixer.fixpromises', () => {
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('promiserejectionfixer.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from PromiseRejectionFixer!');
+		// Get the active text editor
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			vscode.window.showInformationMessage('No editor found. Failed');
+			return;
+		}
+
+		// Get document and document text
+		const document = editor.document;
+		const text = document.getText();
+
+		// Get all instances of '.then' in current window
+		const promiseLocations = getPromiseLocations(text, document);
+		vscode.window.showInformationMessage(`Found ${promiseLocations?.length} promises`);
+
+		promiseLocations.forEach(promise => {
+			console.log(promise);
+		});
+
+		// Exit if no matches are found
+		if (promiseLocations.length === 0) {
+			vscode.window.showInformationMessage('Exiting. No matches.');
+			return;
+		}
+
+		// Check for validity, and perform appropriate action
+		promiseLocations.forEach(promise => {
+			if (!checkValidRejectionHandling(promise)) {
+				insertValidRejectionHandling(promise);
+			}
+		});
 	});
 
 	context.subscriptions.push(disposable);
 }
 
+
+export function getPromiseLocations(text: string, document: vscode.TextDocument): vscode.Position[] {
+	let promiseLocations: vscode.Position[] = [];
+	const regex = /\.then/g;
+	let regexMatch;
+
+	while ((regexMatch = regex.exec(text)) !== null) {
+		promiseLocations.push(document.positionAt(regexMatch.index));
+	}
+
+	return promiseLocations;
+}
+
+
+export function checkValidRejectionHandling(promise: vscode.Position): boolean {
+	let valid = false;
+
+	return valid;
+}
+
+
+export function insertValidRejectionHandling(promise: vscode.Position) {
+
+}
+
+
+
+
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
