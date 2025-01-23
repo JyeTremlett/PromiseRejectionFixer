@@ -34,19 +34,23 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
+		let insertCount = 0;
 		editor.edit(editBuilder => {
-
+			
 			// Check for validity, and perform appropriate action
 			promisePositions.forEach(position => {
 				if (!checkValidRejectionHandling(position, document)) {
 					const insertPosition = insertRejectionHandling(position, document, editBuilder);
 					linesToHighlight.push(new vscode.Range(insertPosition, insertPosition));
+					insertCount++;
 				}
 			});
 		});
 
 		// Indicate what lines were edited
 		editor.setDecorations(highlightDecoration, linesToHighlight);
+
+		doFinalCheck(text, insertCount);
 	});
 
 	context.subscriptions.push(disposable);
@@ -137,6 +141,24 @@ export function insertRejectionHandling(startPosition: vscode.Position, document
 
 	return insertPosition;
 }
+
+
+// Does final check by comparing instances of '.then' and '.catch' and alerting the user if there is a discepency
+export function doFinalCheck(text: string, insertCount: number) {
+	let promiseCount = text.match(/\.then/g)?.length;
+	let catchCount = text.match(/\.catch/g)?.length;
+
+	if(promiseCount === undefined || catchCount === undefined) {
+		return;
+	}
+
+	catchCount = catchCount + insertCount;
+
+	if (promiseCount !== catchCount) {
+		vscode.window.showInformationMessage(`WARNING: Found ${promiseCount} promises and ${catchCount} catch clauses.`);
+	}
+}
+
 
 
 // This method is called when your extension is deactivated
