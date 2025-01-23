@@ -7,6 +7,12 @@ export function activate(context: vscode.ExtensionContext) {
 	// the command will insert handling.
 	const disposable = vscode.commands.registerCommand('promiserejectionfixer.fixpromises', () => {
 
+		let linesToHighlight: vscode.Range[] = [];
+		const highlightDecoration = vscode.window.createTextEditorDecorationType({
+			backgroundColor: 'rgba(200, 247, 197, 0.3)',
+			isWholeLine: true
+		});
+
 		// Get the active text editor
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) {
@@ -28,18 +34,26 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		// Check for validity, and perform appropriate action
-		promisePositions.forEach(promise => {
-			if (!checkValidRejectionHandling(promise, document)) {
-				insertValidRejectionHandling(promise);
-			}
+		editor.edit(editBuilder => {
+
+			// Check for validity, and perform appropriate action
+			promisePositions.forEach(position => {
+				if (!checkValidRejectionHandling(position, document)) {
+					const insertPosition = insertRejectionHandling(position, document, editBuilder);
+					linesToHighlight.push(new vscode.Range(insertPosition, insertPosition));
+				}
+			});
 		});
+
+		// Indicate what lines were edited
+		editor.setDecorations(highlightDecoration, linesToHighlight);
 	});
 
 	context.subscriptions.push(disposable);
 }
 
 
+// Gets array of vscode.Position objects where the string '.then' occurs in the document. These positions are used as indicators of the start of a Promise's definition
 export function getPromisePositions(text: string, document: vscode.TextDocument): vscode.Position[] {
 	let promisePositions: vscode.Position[] = [];
 	const regex = /\.then/g;
@@ -53,8 +67,11 @@ export function getPromisePositions(text: string, document: vscode.TextDocument)
 }
 
 
+// Checks if the Promise code beginning at startPosition correctly handles rejections. Correctly handled rejections have two potential formats:
+// 		Format type 1: The closing bracket for '.then(' is followed by '.catch('
+// 		Format type 2: The '.then()' code contains TWO callback functions, the second of which handles rejections
+// If either of the two formats are detected, returns true, else returns false 
 export function checkValidRejectionHandling(startPosition: vscode.Position, document: vscode.TextDocument): boolean {
-	let valid = false;
 	let textSelection = '';
 	const text = document.getText(new vscode.Range(startPosition, document.lineAt(document.lineCount - 1).range.end));
 
@@ -69,13 +86,13 @@ export function checkValidRejectionHandling(startPosition: vscode.Position, docu
 		i++;
 	}
 
-	// Check if text provides rejection handling using '.catch()'
+	// Check for format type 1
 	textSelection = text.slice(i, i + 20);
 	if (textSelection.includes('.catch(')) {
 		return true;
 	}
 
-	// Check if text provides rejection handling by supplying a callback function
+	// Check for format type 2
 	textSelection = text.slice(0, i);
 	let j = textSelection.indexOf('{') + 1;
 	let curlyBracketBalance = 1;
@@ -86,23 +103,37 @@ export function checkValidRejectionHandling(startPosition: vscode.Position, docu
 		j++;
 	}
 
-	textSelection = text.slice(i, i + 20);
+	textSelection = text.slice(j, j + 20);
 	if (textSelection.includes(', function')) {
 		return true;
 	}
 
-	return valid;
+	// 4: If rejections aren't handled, return false 
+	return false;
 }
 
 
-export function insertValidRejectionHandling(promise: vscode.Position) {
+// Insert rejection handling code '.catch(angular.noop)' after the closing bracket for '.then(' clause directly after startPosition
+export function insertRejectionHandling(startPosition: vscode.Position, document: vscode.TextDocument, editBuilder: vscode.TextEditorEdit): vscode.Position {
+	const text = document.getText(new vscode.Range(startPosition, document.lineAt(document.lineCount - 1).range.end));
 
+	// Find the closing bracket for '.then('
+	let i = '.then('.length;
+	let bracketBalance = 1;
+
+	while (bracketBalance !== 0 && i < text.length) {
+		text[i] === '(' ? bracketBalance++ : null;
+		text[i] === ')' ? bracketBalance-- : null;
+		i++;
+	}
+
+	// Insert rejection handling code 
+	let insertPosition = document.positionAt(i + document.offsetAt(startPosition));
+	editBuilder.insert(insertPosition, '.catch(angular.noop)');
+
+	return insertPosition;
 }
 
-
-export function getCharAtPosition(position: vscode.Position, document: vscode.TextDocument): string {
-	return document.getText(new vscode.Range(position, position.translate(0, 1)));
-}
 
 // This method is called when your extension is deactivated
 export function deactivate() { }
