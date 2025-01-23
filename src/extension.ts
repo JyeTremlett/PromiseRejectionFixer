@@ -116,6 +116,7 @@ export function checkValidRejectionHandling(startPosition: vscode.Position, docu
 // Insert rejection handling code '.catch(angular.noop)' after the closing bracket for '.then(' clause directly after startPosition
 export function insertRejectionHandling(startPosition: vscode.Position, document: vscode.TextDocument, editBuilder: vscode.TextEditorEdit): vscode.Position {
 	const text = document.getText(new vscode.Range(startPosition, document.lineAt(document.lineCount - 1).range.end));
+	let insertText = '.catch(angular.noop)';
 
 	// Find the closing bracket for '.then('
 	let i = '.then('.length;
@@ -127,9 +128,12 @@ export function insertRejectionHandling(startPosition: vscode.Position, document
 		i++;
 	}
 
+	// Add a semicolon to insertText if one is not already present
+	text[i] !== ';' ? insertText += ';' : null;
+
 	// Insert rejection handling code 
 	let insertPosition = document.positionAt(i + document.offsetAt(startPosition));
-	editBuilder.insert(insertPosition, '.catch(angular.noop)');
+	editBuilder.insert(insertPosition, insertText);
 
 	return insertPosition;
 }
