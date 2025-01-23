@@ -36,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let insertCount = 0;
 		editor.edit(editBuilder => {
-			
+
 			// Check for validity, and perform appropriate action
 			promisePositions.forEach(position => {
 				if (!checkValidRejectionHandling(position, document)) {
@@ -107,7 +107,6 @@ export function checkValidRejectionHandling(startPosition: vscode.Position, docu
 		j++;
 	}
 
-	console.log(text[j]);
 	if (text[j] === ',') {
 		return true;
 	}
@@ -148,7 +147,7 @@ export function doFinalCheck(text: string, insertCount: number) {
 	let promiseCount = text.match(/\.then/g)?.length;
 	let catchCount = text.match(/\.catch/g)?.length;
 
-	if(promiseCount === undefined || catchCount === undefined) {
+	if (promiseCount === undefined || catchCount === undefined) {
 		return;
 	}
 
