@@ -107,12 +107,12 @@ export function checkValidRejectionHandling(startPosition: vscode.Position, docu
 		j++;
 	}
 
-	textSelection = text.slice(j, j + 20);
-	if (textSelection.includes(', function')) {
+	console.log(text[j]);
+	if (text[j] === ',') {
 		return true;
 	}
 
-	// 4: If rejections aren't handled, return false 
+	// If rejections aren't handled, return false 
 	return false;
 }
 
